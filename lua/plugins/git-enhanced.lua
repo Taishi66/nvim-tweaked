@@ -1,80 +1,221 @@
+-- ════════════════════════════════════════════════════════════════════════════
 -- GitLens-like experience for Neovim
 -- Combines gitsigns (blame inline) + diffview (history, diffs)
+-- ════════════════════════════════════════════════════════════════════════════
 
 -- ══════════════════════════════════════════════════════════════════════════
--- Helper: Détection automatique de la branche par défaut
+-- Git Branch Detection - Async + Cache
 -- ══════════════════════════════════════════════════════════════════════════
-local function get_default_branch()
-  -- Méthode 1: Lire le HEAD symbolique du remote
-  local handle = io.popen("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")
-  if handle then
-    local result = handle:read("*a")
-    handle:close()
-    local branch = result:match("refs/remotes/origin/(.+)")
+
+local branch_cache = {
+  default = nil,
+  develop = nil,
+  cwd = nil, -- Pour invalider le cache si on change de repo
+}
+
+-- Invalider le cache si on change de répertoire
+local function check_cache_valid()
+  local cwd = vim.fn.getcwd()
+  if branch_cache.cwd ~= cwd then
+    branch_cache = { default = nil, develop = nil, cwd = cwd }
+  end
+end
+
+-- Détection synchrone (utilisée pour le cache initial)
+local function detect_branch_sync(branch_type)
+  check_cache_valid()
+
+  -- Retourner du cache si disponible
+  if branch_cache[branch_type] then
+    return branch_cache[branch_type]
+  end
+
+  local result = nil
+
+  if branch_type == "default" then
+    -- Méthode 1: HEAD symbolique
+    local out = vim.fn.system("git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null")
+    local branch = out:match("refs/remotes/origin/(.+)")
     if branch then
-      return vim.trim(branch)
+      result = vim.trim(branch)
     end
+
+    -- Méthode 2: Vérifier main
+    if not result then
+      out = vim.fn.system("git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null && echo main")
+      if vim.trim(out) == "main" then
+        result = "main"
+      end
+    end
+
+    -- Méthode 3: Vérifier master
+    if not result then
+      out = vim.fn.system("git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null && echo master")
+      if vim.trim(out) == "master" then
+        result = "master"
+      end
+    end
+
+    -- Fallback
+    result = result or "main"
+
+  elseif branch_type == "develop" then
+    -- Vérifier develop
+    local out = vim.fn.system("git show-ref --verify --quiet refs/remotes/origin/develop 2>/dev/null && echo develop")
+    if vim.trim(out) == "develop" then
+      result = "develop"
+    end
+
+    -- Vérifier dev
+    if not result then
+      out = vim.fn.system("git show-ref --verify --quiet refs/remotes/origin/dev 2>/dev/null && echo dev")
+      if vim.trim(out) == "dev" then
+        result = "dev"
+      end
+    end
+
+    -- Fallback: utiliser default
+    result = result or detect_branch_sync("default")
   end
 
-  -- Méthode 2: Vérifier si main existe
-  handle = io.popen("git show-ref --verify --quiet refs/remotes/origin/main 2>/dev/null && echo main")
-  if handle then
-    local result = vim.trim(handle:read("*a") or "")
-    handle:close()
-    if result == "main" then
-      return "main"
-    end
-  end
-
-  -- Méthode 3: Vérifier si master existe
-  handle = io.popen("git show-ref --verify --quiet refs/remotes/origin/master 2>/dev/null && echo master")
-  if handle then
-    local result = vim.trim(handle:read("*a") or "")
-    handle:close()
-    if result == "master" then
-      return "master"
-    end
-  end
-
-  -- Méthode 4: Essayer de récupérer via git remote
-  handle = io.popen("git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d: -f2")
-  if handle then
-    local result = vim.trim(handle:read("*a") or "")
-    handle:close()
-    if result ~= "" then
-      return result
-    end
-  end
-
-  -- Fallback
-  return "main"
+  -- Mettre en cache
+  branch_cache[branch_type] = result
+  return result
 end
 
--- Helper: Détection de la branche develop/dev
-local function get_develop_branch()
-  -- Vérifier develop
-  local handle = io.popen("git show-ref --verify --quiet refs/remotes/origin/develop 2>/dev/null && echo develop")
-  if handle then
-    local result = vim.trim(handle:read("*a") or "")
-    handle:close()
-    if result == "develop" then
-      return "develop"
-    end
+-- Détection async avec callback (nvim 0.10+) - 100% NON-BLOQUANT
+local function detect_branch_async(branch_type, callback)
+  check_cache_valid()
+
+  -- Retourner du cache si disponible
+  if branch_cache[branch_type] then
+    callback(branch_cache[branch_type])
+    return
   end
 
-  -- Vérifier dev
-  handle = io.popen("git show-ref --verify --quiet refs/remotes/origin/dev 2>/dev/null && echo dev")
-  if handle then
-    local result = vim.trim(handle:read("*a") or "")
-    handle:close()
-    if result == "dev" then
-      return "dev"
-    end
+  -- Fallback pour nvim < 0.10
+  if not vim.system then
+    callback(detect_branch_sync(branch_type))
+    return
   end
 
-  -- Fallback: utiliser la branche par défaut
-  return get_default_branch()
+  -- ════════════════════════════════════════════════════════════════════════
+  -- DÉTECTION BRANCHE PAR DÉFAUT (main/master)
+  -- ════════════════════════════════════════════════════════════════════════
+  if branch_type == "default" then
+    -- Étape 1: Essayer symbolic-ref
+    vim.system({ "git", "symbolic-ref", "refs/remotes/origin/HEAD" }, { text = true }, function(obj)
+      vim.schedule(function()
+        if obj.code == 0 then
+          local branch = obj.stdout:match("refs/remotes/origin/(.+)")
+          if branch then
+            local result = vim.trim(branch)
+            branch_cache["default"] = result
+            callback(result)
+            return
+          end
+        end
+
+        -- Étape 2: Vérifier main (async)
+        vim.system({ "git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/main" }, {}, function(obj2)
+          vim.schedule(function()
+            if obj2.code == 0 then
+              branch_cache["default"] = "main"
+              callback("main")
+              return
+            end
+
+            -- Étape 3: Vérifier master (async)
+            vim.system({ "git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/master" }, {}, function(obj3)
+              vim.schedule(function()
+                local result = obj3.code == 0 and "master" or "main"
+                branch_cache["default"] = result
+                callback(result)
+              end)
+            end)
+          end)
+        end)
+      end)
+    end)
+
+  -- ════════════════════════════════════════════════════════════════════════
+  -- DÉTECTION BRANCHE DEVELOP (develop/dev)
+  -- ════════════════════════════════════════════════════════════════════════
+  elseif branch_type == "develop" then
+    -- Étape 1: Vérifier develop (async)
+    vim.system({ "git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/develop" }, {}, function(obj)
+      vim.schedule(function()
+        if obj.code == 0 then
+          branch_cache["develop"] = "develop"
+          callback("develop")
+          return
+        end
+
+        -- Étape 2: Vérifier dev (async)
+        vim.system({ "git", "show-ref", "--verify", "--quiet", "refs/remotes/origin/dev" }, {}, function(obj2)
+          vim.schedule(function()
+            if obj2.code == 0 then
+              branch_cache["develop"] = "dev"
+              callback("dev")
+              return
+            end
+
+            -- Étape 3: Fallback vers branche par défaut (async)
+            detect_branch_async("default", function(default_branch)
+              branch_cache["develop"] = default_branch
+              callback(default_branch)
+            end)
+          end)
+        end)
+      end)
+    end)
+  end
 end
+
+-- Commande pour ouvrir diff avec branche par défaut
+local function diff_vs_default()
+  detect_branch_async("default", function(branch)
+    vim.notify(" Diff vs origin/" .. branch, vim.log.levels.INFO)
+    vim.cmd("DiffviewOpen origin/" .. branch .. "...HEAD")
+  end)
+end
+
+-- Commande pour ouvrir diff avec branche develop
+local function diff_vs_develop()
+  detect_branch_async("develop", function(branch)
+    vim.notify(" Diff vs origin/" .. branch, vim.log.levels.INFO)
+    vim.cmd("DiffviewOpen origin/" .. branch .. "...HEAD")
+  end)
+end
+
+-- Pré-charger le cache au démarrage (async, non-bloquant)
+vim.api.nvim_create_autocmd("VimEnter", {
+  group = vim.api.nvim_create_augroup("GitBranchCache", { clear = true }),
+  callback = function()
+    -- Attendre un peu puis pré-charger
+    vim.defer_fn(function()
+      detect_branch_async("default", function() end)
+      detect_branch_async("develop", function() end)
+    end, 1000)
+  end,
+})
+
+-- Invalider le cache quand on change de répertoire
+vim.api.nvim_create_autocmd("DirChanged", {
+  group = vim.api.nvim_create_augroup("GitBranchCacheInvalidate", { clear = true }),
+  callback = function()
+    branch_cache = { default = nil, develop = nil, cwd = vim.fn.getcwd() }
+    -- Pré-charger pour le nouveau répertoire
+    vim.defer_fn(function()
+      detect_branch_async("default", function() end)
+      detect_branch_async("develop", function() end)
+    end, 500)
+  end,
+})
+
+-- ══════════════════════════════════════════════════════════════════════════
+-- PLUGINS
+-- ══════════════════════════════════════════════════════════════════════════
 
 return {
   -- ══════════════════════════════════════════════════════════════════════════
@@ -147,23 +288,10 @@ return {
       { "<leader>gh", "<cmd>DiffviewFileHistory<cr>", desc = "Git History (repo)" },
       -- Ouvrir diff view (tous les changements)
       { "<leader>go", "<cmd>DiffviewOpen<cr>", desc = "Open Diffview" },
-      -- Diff avec une branche (détection automatique)
-      {
-        "<leader>gm",
-        function()
-          local branch = get_default_branch()
-          vim.cmd("DiffviewOpen origin/" .. branch .. "...HEAD")
-        end,
-        desc = "Diff vs default branch (auto-detect)",
-      },
-      {
-        "<leader>gM",
-        function()
-          local branch = get_develop_branch()
-          vim.cmd("DiffviewOpen origin/" .. branch .. "...HEAD")
-        end,
-        desc = "Diff vs develop branch (auto-detect)",
-      },
+      -- Diff avec branche par défaut (détection auto)
+      { "<leader>gm", diff_vs_default, desc = "Diff vs default branch (auto)" },
+      -- Diff avec branche develop (détection auto)
+      { "<leader>gM", diff_vs_develop, desc = "Diff vs develop branch (auto)" },
       -- Fermer diffview
       { "<leader>gc", "<cmd>DiffviewClose<cr>", desc = "Close Diffview" },
     },

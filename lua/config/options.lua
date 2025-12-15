@@ -16,258 +16,180 @@ vim.o.cursorline = true
 vim.o.cursorcolumn = false
 
 -- ════════════════════════════════════════════════════════════════════════════
--- TRANSPARENCE - Système centralisé COMPLET
+-- TRANSPARENCE - Système centralisé avec persistance
 -- ════════════════════════════════════════════════════════════════════════════
-vim.g.transparent_enabled = true
+
+-- Fichier de persistance
+local data_path = vim.fn.stdpath("data") .. "/transparency_state.json"
+
+-- Charger l'état persisté
+local function load_transparency_state()
+  local file = io.open(data_path, "r")
+  if file then
+    local content = file:read("*a")
+    file:close()
+    local ok, data = pcall(vim.json.decode, content)
+    if ok and type(data) == "table" then
+      return data.enabled ~= false -- default true
+    end
+  end
+  return true -- default: transparence activée
+end
+
+-- Sauvegarder l'état
+local function save_transparency_state(enabled)
+  local file = io.open(data_path, "w")
+  if file then
+    file:write(vim.json.encode({ enabled = enabled }))
+    file:close()
+  end
+end
+
+-- Initialiser l'état depuis la persistance
+vim.g.transparent_enabled = load_transparency_state()
 
 -- ──────────────────────────────────────────────────────────────────────────────
--- Configuration de transparence pour TOUS les thèmes
+-- Highlight groups originaux (pour restauration)
 -- ──────────────────────────────────────────────────────────────────────────────
+local original_highlights = {}
 
--- Thèmes utilisant require("theme").setup() - appellent setup() à chaque toggle
-local theme_setup_config = {
-  ["tokyonight"] = function(enabled)
-    require("tokyonight").setup({
-      transparent = enabled,
-      styles = {
-        sidebars = enabled and "transparent" or "dark",
-        floats = enabled and "transparent" or "dark",
-      },
-    })
-  end,
-  ["catppuccin"] = function(enabled)
-    require("catppuccin").setup({
-      transparent_background = enabled,
-    })
-  end,
-  ["kanagawa"] = function(enabled)
-    require("kanagawa").setup({
-      transparent = enabled,
-    })
-  end,
-  ["rose-pine"] = function(enabled)
-    require("rose-pine").setup({
-      disable_background = enabled,
-      disable_float_background = enabled,
-    })
-  end,
-  ["onedark"] = function(enabled)
-    require("onedark").setup({
-      transparent = enabled,
-    })
-  end,
-  ["nightfox"] = function(enabled)
-    require("nightfox").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["duskfox"] = function(enabled)
-    require("nightfox").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["nordfox"] = function(enabled)
-    require("nightfox").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["terafox"] = function(enabled)
-    require("nightfox").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["carbonfox"] = function(enabled)
-    require("nightfox").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["dracula"] = function(enabled)
-    require("dracula").setup({
-      transparent_bg = enabled,
-    })
-  end,
-  ["github_dark"] = function(enabled)
-    require("github-theme").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["github_light"] = function(enabled)
-    require("github-theme").setup({
-      options = { transparent = enabled },
-    })
-  end,
-  ["solarized-osaka"] = function(enabled)
-    require("solarized-osaka").setup({
-      transparent = enabled,
-      styles = {
-        sidebars = enabled and "transparent" or "dark",
-        floats = enabled and "transparent" or "dark",
-      },
-    })
-  end,
-  ["vscode"] = function(enabled)
-    require("vscode").setup({
-      transparent = enabled,
-    })
-  end,
-  ["ayu"] = function(enabled)
-    require("ayu").setup({
-      overrides = enabled and {
-        Normal = { bg = "None" },
-        NormalFloat = { bg = "None" },
-        SignColumn = { bg = "None" },
-        NormalNC = { bg = "None" },
-      } or {},
-    })
-  end,
-  ["monokai-pro"] = function(enabled)
-    require("monokai-pro").setup({
-      transparent_background = enabled,
-    })
-  end,
-  ["cyberdream"] = function(enabled)
-    require("cyberdream").setup({
-      transparent = enabled,
-    })
-  end,
-  ["material"] = function(enabled)
-    require("material").setup({
-      disable = { background = enabled },
-    })
-  end,
-  ["fluoromachine"] = function(enabled)
-    require("fluoromachine").setup({
-      transparent = enabled,
-    })
-  end,
-  ["bamboo"] = function(enabled)
-    require("bamboo").setup({
-      transparent = enabled,
-    })
-  end,
-  ["modus"] = function(enabled)
-    require("modus-themes").setup({
-      transparent = enabled,
-    })
-  end,
-  ["poimandres"] = function(enabled)
-    require("poimandres").setup({
-      disable_background = enabled,
-      disable_float_background = enabled,
-    })
-  end,
-}
-
--- Thèmes utilisant vim.g.* - config via variables globales
-local theme_vimg_config = {
-  ["gruvbox-material"] = function(enabled)
-    vim.g.gruvbox_material_transparent_background = enabled and 2 or 0
-  end,
-  ["everforest"] = function(enabled)
-    vim.g.everforest_transparent_background = enabled and 2 or 0
-  end,
-  ["sonokai"] = function(enabled)
-    vim.g.sonokai_transparent_background = enabled and 2 or 0
-  end,
-  ["nord"] = function(enabled)
-    vim.g.nord_disable_background = enabled
-  end,
-}
-
--- Thèmes sans support natif de transparence - on force via highlight groups
-local themes_without_transparency = {
-  "oxocarbon",
-  "melange",
-}
-
--- Applique la transparence forcée via highlight groups (pour thèmes sans support natif)
-local function apply_forced_transparency()
-  if not vim.g.transparent_enabled then return end
-
-  local current = vim.g.colors_name or ""
-  for _, theme in ipairs(themes_without_transparency) do
-    if current:find(theme, 1, true) then  -- plain match, pas de pattern
-      -- Force la transparence sur TOUS les groupes pertinents
-      local groups = {
-        "Normal", "NormalNC", "NormalFloat", "NormalSB",
-        "SignColumn", "EndOfBuffer", "FloatBorder",
-        "WinSeparator", "VertSplit", "StatusLine", "StatusLineNC",
-        "TabLine", "TabLineFill", "WinBar", "WinBarNC",
-        "Pmenu", "PmenuSbar", "FoldColumn", "LineNr", "CursorLineNr",
-      }
-      for _, group in ipairs(groups) do
-        local hl = vim.api.nvim_get_hl(0, { name = group })
-        hl.bg = nil  -- Remove background
-        pcall(vim.api.nvim_set_hl, 0, group, hl)
-      end
-      break
+local function save_original_highlights()
+  local TC = require("config.theme-configs")
+  for _, group in ipairs(TC.transparency_groups) do
+    local hl = vim.api.nvim_get_hl(0, { name = group })
+    if next(hl) then
+      original_highlights[group] = vim.deepcopy(hl)
     end
   end
 end
 
--- Autocmd qui s'exécute APRÈS chaque changement de colorscheme
+local function restore_original_highlights()
+  for group, hl in pairs(original_highlights) do
+    pcall(vim.api.nvim_set_hl, 0, group, hl)
+  end
+end
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Transparence forcée (pour thèmes sans support natif)
+-- ──────────────────────────────────────────────────────────────────────────────
+local function apply_forced_transparency()
+  if not vim.g.transparent_enabled then return end
+
+  local TC = require("config.theme-configs")
+  local current = vim.g.colors_name or ""
+
+  if TC.needs_forced_transparency(current) then
+    -- Sauvegarder les highlights originaux avant modification
+    save_original_highlights()
+
+    -- Appliquer la transparence sur tous les groupes
+    for _, group in ipairs(TC.transparency_groups) do
+      local hl = vim.api.nvim_get_hl(0, { name = group })
+      hl.bg = nil
+      hl.ctermbg = nil
+      pcall(vim.api.nvim_set_hl, 0, group, hl)
+    end
+  end
+end
+
+local function remove_forced_transparency()
+  local TC = require("config.theme-configs")
+  local current = vim.g.colors_name or ""
+
+  if TC.needs_forced_transparency(current) then
+    restore_original_highlights()
+  end
+end
+
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Autocmd ColorScheme
+-- ──────────────────────────────────────────────────────────────────────────────
 vim.api.nvim_create_autocmd("ColorScheme", {
   group = vim.api.nvim_create_augroup("TransparencyManager", { clear = true }),
   callback = function()
-    -- vim.schedule est plus fiable que defer_fn avec délai arbitraire
     vim.schedule(function()
+      -- Reset original highlights cache quand le colorscheme change
+      original_highlights = {}
+      -- Appliquer la transparence forcée si nécessaire
       apply_forced_transparency()
     end)
   end,
 })
 
--- Trouve et appelle la fonction de configuration pour le thème actuel
-local function reconfigure_current_theme(enabled)
-  local current = vim.g.colors_name or ""
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Reconfigurer le thème actuel avec les nouvelles options de transparence
+-- Gère TOUS les cas : vim.g.* seul, setup() seul, ou les deux (ex: material)
+-- ──────────────────────────────────────────────────────────────────────────────
+local function reconfigure_theme(colorscheme)
+  local TC = require("config.theme-configs")
+  local configured = false
 
-  -- 1. Chercher dans theme_setup_config (require().setup())
-  for pattern, config_fn in pairs(theme_setup_config) do
-    if current:find(pattern, 1, true) then
-      local ok = pcall(config_fn, enabled)
-      return ok
+  -- 1. TOUJOURS configurer vim.g.* EN PREMIER (certains setup() lisent ces variables)
+  local vimg_fn = TC.get_vimg_config(colorscheme)
+  if vimg_fn then
+    pcall(vimg_fn)
+    configured = true
+  end
+
+  -- 2. Appeler setup() si disponible
+  local config, module_name = TC.get_config(colorscheme)
+  if config and module_name then
+    local ok, theme_module = pcall(require, module_name)
+    if ok and theme_module and theme_module.setup then
+      pcall(theme_module.setup, config)
+      configured = true
     end
   end
 
-  -- 2. Chercher dans theme_vimg_config (vim.g.*)
-  for pattern, config_fn in pairs(theme_vimg_config) do
-    if current:find(pattern, 1, true) then
-      local ok = pcall(config_fn, enabled)
-      return ok
-    end
-  end
-
-  return false
+  return configured
 end
 
--- Toggle transparence - VERSION COMPLÈTE ET CORRIGÉE
+-- ──────────────────────────────────────────────────────────────────────────────
+-- Toggle Transparence - VERSION FINALE OPTIMISÉE
+-- ──────────────────────────────────────────────────────────────────────────────
 local function toggle_transparency()
-  vim.g.transparent_enabled = not vim.g.transparent_enabled
-  local enabled = vim.g.transparent_enabled
   local current_theme = vim.g.colors_name
 
-  -- 1. Reconfigurer les thèmes vim.g.* (nécessaire AVANT le reload)
-  for _, config_fn in pairs(theme_vimg_config) do
-    pcall(config_fn, enabled)
+  -- Toggle l'état
+  vim.g.transparent_enabled = not vim.g.transparent_enabled
+  local enabled = vim.g.transparent_enabled
+
+  -- Sauvegarder l'état
+  save_transparency_state(enabled)
+
+  -- Si on désactive, restaurer les highlights d'abord
+  if not enabled then
+    remove_forced_transparency()
   end
 
-  -- 2. Reconfigurer le thème actuel via setup() si applicable
-  reconfigure_current_theme(enabled)
-
-  -- 3. Recharger le colorscheme pour appliquer les changements
+  -- Reconfigurer et recharger le thème actuel
   if current_theme then
-    local ok, err = pcall(vim.cmd, "colorscheme " .. current_theme)
+    -- reconfigure_theme gère tout : vim.g.* ET setup() dans le bon ordre
+    local supported = reconfigure_theme(current_theme)
+
+    -- Recharger le colorscheme pour appliquer les changements
+    local ok, err = pcall(vim.cmd.colorscheme, current_theme)
     if not ok then
-      vim.notify("Erreur: " .. tostring(err), vim.log.levels.ERROR)
+      vim.notify("Erreur colorscheme: " .. tostring(err), vim.log.levels.ERROR)
       return
     end
-  end
 
-  -- 4. Forcer la transparence si thème sans support natif
-  if enabled then
-    vim.schedule(apply_forced_transparency)
+    -- Notification avec avertissement si thème non supporté
+    local icon = enabled and "" or ""
+    if supported then
+      vim.notify(icon .. " Transparence: " .. (enabled and "ON" or "OFF"), vim.log.levels.INFO)
+    else
+      vim.notify(
+        icon .. " Transparence: " .. (enabled and "ON" or "OFF") .. "\n" ..
+        "   " .. current_theme .. " n'a pas de config transparence",
+        vim.log.levels.WARN
+      )
+    end
+  else
+    -- Pas de thème actif
+    local icon = enabled and "" or ""
+    vim.notify(icon .. " Transparence: " .. (enabled and "ON" or "OFF"), vim.log.levels.INFO)
   end
-
-  vim.notify("Transparence: " .. (enabled and "ON" or "OFF"), vim.log.levels.INFO)
 end
 
 vim.keymap.set("n", "<leader>ut", toggle_transparency, { desc = "Toggle Transparency" })
@@ -276,14 +198,27 @@ vim.keymap.set("n", "<leader>ut", toggle_transparency, { desc = "Toggle Transpar
 -- COMMANDE :TransparencyStatus - Debug
 -- ════════════════════════════════════════════════════════════════════════════
 vim.api.nvim_create_user_command("TransparencyStatus", function()
+  local TC = require("config.theme-configs")
+  local current = vim.g.colors_name or "aucun"
+  local has_setup = TC.get_config(current) ~= nil
+  local has_vimg = TC.get_vimg_config(current) ~= nil
+  local needs_forced = TC.needs_forced_transparency(current)
+
   local lines = {
-    "Transparence: " .. (vim.g.transparent_enabled and "ON" or "OFF"),
-    "Thème actuel: " .. (vim.g.colors_name or "aucun"),
+    "══════════════════════════════════════════════",
+    " TRANSPARENCE STATUS",
+    "══════════════════════════════════════════════",
     "",
-    "vim.g.gruvbox_material_transparent_background = " .. tostring(vim.g.gruvbox_material_transparent_background),
-    "vim.g.everforest_transparent_background = " .. tostring(vim.g.everforest_transparent_background),
-    "vim.g.sonokai_transparent_background = " .. tostring(vim.g.sonokai_transparent_background),
-    "vim.g.nord_disable_background = " .. tostring(vim.g.nord_disable_background),
+    "  Transparence: " .. (vim.g.transparent_enabled and "ON" or "OFF"),
+    "  Thème actuel: " .. current,
+    "  Persistance:  " .. data_path,
+    "",
+    "  Type de thème:",
+    "    • setup():  " .. (has_setup and "Oui" or "Non"),
+    "    • vim.g.*:  " .. (has_vimg and "Oui" or "Non"),
+    "    • Forcée:   " .. (needs_forced and "Oui" or "Non"),
+    "",
+    "══════════════════════════════════════════════",
   }
   vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
 end, { desc = "Show transparency status" })
