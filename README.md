@@ -1,23 +1,25 @@
 # nvim-tweaked
 
-A customized [LazyVim](https://github.com/LazyVim/LazyVim) configuration with VSCode-like keybindings, AZERTY keyboard support, and a curated collection of transparent themes.
+A customized [LazyVim](https://github.com/LazyVim/LazyVim) configuration with VSCode-like keybindings, AZERTY keyboard support, and a curated collection of 22 transparent themes.
 
 ## Features
 
 ### VSCode-like Keybindings
 
-This config brings familiar VSCode shortcuts to Neovim while preserving LazyVim defaults:
+Familiar VSCode shortcuts while preserving Vim essentials:
 
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+P` | Quick open files |
+| `Ctrl+E` | Recent files |
 | `Ctrl+Shift+P` | Command palette |
-| `Ctrl+Shift+F` | Search in project (grep) |
+| `Alt+F` | Search in project (grep) |
 | `Ctrl+Shift+E` | File explorer |
 | `Ctrl+B` | Toggle sidebar |
 | `Ctrl+G` | Go to line |
+| `Ctrl+F` | Search in file |
 | `Ctrl+/` | Toggle comment |
-| `Ctrl+D` | Select word & find next |
+| `Ctrl+N` | Select word & find next |
 | `Ctrl+Shift+D` | Duplicate line |
 | `F12` | Go to definition |
 | `Shift+F12` | Go to references |
@@ -25,14 +27,43 @@ This config brings familiar VSCode shortcuts to Neovim while preserving LazyVim 
 | `Ctrl+.` | Code actions |
 | `F8` / `Shift+F8` | Next/previous diagnostic |
 | `Shift+Alt+F` | Format document |
-| `Ctrl+`` ` | Toggle terminal |
 | `Ctrl+K Z` | Zen mode |
-| `Ctrl+Tab` | Next buffer |
-| `Alt+1..5` | Go to buffer 1-5 |
+
+### Terminal
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+T` | Toggle terminal |
+| `F4` | Toggle terminal (alternative) |
+| `Space t t` | Toggle terminal (leader) |
+| `Esc Esc` | Exit terminal mode |
+| `jk` | Exit terminal mode (alternative) |
+
+The terminal automatically enters insert mode when opened.
+
+### Splits & Windows
+
+| Shortcut | Action |
+|----------|--------|
+| `Space w v` | Split vertical |
+| `Space w h` | Split horizontal |
+| `Space w d` | Close split |
+| `Ctrl+h/j/k/l` | Navigate between splits |
+| `Shift+H` | Previous buffer |
+| `Shift+L` | Next buffer |
+
+### TUI Tools Integration
+
+| Shortcut | Tool |
+|----------|------|
+| `Space g g` | Lazygit |
+| `Space o d` | Lazydocker |
+| `Space o q` | Lazysql |
+| `Space o s` | Lazyssh |
 
 ### AZERTY/QWERTY Keyboard Toggle
 
-Switch between keyboard layouts on the fly with `<leader>ka`. When AZERTY mode is active:
+Switch between keyboard layouts with `Space k a`. When AZERTY mode is active:
 
 | Key | Action |
 |-----|--------|
@@ -49,17 +80,26 @@ Switch between keyboard layouts on the fly with `<leader>ka`. When AZERTY mode i
 
 **Commands:**
 - `:Azerty` / `:Qwerty` - Switch keyboard mode
-- `:Keys` or `:Cheatsheet` - Show all keybindings in a floating window
+- `:Keys` or `:Cheatsheet` - Show optimized 2-column cheatsheet
 
 The keyboard mode indicator is displayed in the statusline (AZY/QWY).
 
-### Theme Collection (16 themes with transparency)
+### Format on Save
+
+Automatic formatting enabled by default. Toggle with `Space u f`.
+
+Supported formatters:
+- **Python**: ruff, black, isort
+- **Lua**: stylua
+- **JS/TS/JSON/CSS/HTML/MD**: prettier
+
+### Theme Collection (22 themes with transparency)
 
 All themes are pre-configured with transparent backgrounds:
 
 | Theme | Variants |
 |-------|----------|
-| **Tokyo Night** | storm, moon, night, day |
+| **Tokyo Night** (default) | storm, moon, night, day |
 | **Catppuccin** | latte, frappe, macchiato, mocha |
 | **Kanagawa** | wave, dragon, lotus |
 | **Rose Pine** | main, moon, dawn |
@@ -75,12 +115,30 @@ All themes are pre-configured with transparent backgrounds:
 | **Oxocarbon** | - |
 | **Fluoromachine** | fluoromachine, retrowave, delta |
 | **Sonokai** | default, atlantis, andromeda, shusia, maia, espresso |
+| **GitHub** | dark, light, dimmed |
+| **Solarized Osaka** | - |
+| **VSCode** | dark, light |
+| **Ayu** | dark, light, mirage |
+| **Bamboo** | - |
+| **Poimandres** | - |
 
-**Persistent theme selection:** Use `<leader>uC` to pick a colorscheme - it will be saved and restored on next launch.
+**Theme shortcuts:**
+- `Space u C` - Pick colorscheme (persistent)
+- `Space u t` - Toggle transparency
+
+### Vim Essentials Preserved
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+R` | Redo (native Vim) |
+| `Ctrl+Q` | Visual Block (replaces C-v) |
+| `g Ctrl+A` | Increment number |
+| `g Ctrl+X` | Decrement number |
+| `PageUp/Down` | Page scroll |
 
 ### Custom Statusline
 
-A developer-focused lualine configuration featuring:
+Developer-focused lualine configuration:
 
 - **Mode indicator** - Single letter (N/I/V/R/C/T)
 - **Git info** - Full branch name + ahead/behind compared to develop/main
@@ -90,11 +148,6 @@ A developer-focused lualine configuration featuring:
 - **Diagnostics** - Error/Warning/Info/Hint counts
 - **LSP indicator** - Shows when LSP is active
 - **Keyboard mode** - AZY (AZERTY) or QWY (QWERTY)
-- **File type & position** - Language, progress, line:column
-
-### Custom Dashboard
-
-ASCII art banner "ISHA_ATARI" displayed on startup via snacks.nvim dashboard.
 
 ## Installation
 
@@ -102,8 +155,9 @@ ASCII art banner "ISHA_ATARI" displayed on startup via snacks.nvim dashboard.
 
 - Neovim >= 0.9.0
 - Git
-- A [Nerd Font](https://www.nerdfonts.com/) (for icons)
-- Terminal with true color support (for transparent themes)
+- [Nerd Font](https://www.nerdfonts.com/) (for icons)
+- Terminal with true color support
+- Node.js (for LSP servers and prettier)
 
 ### Quick Start
 
@@ -119,19 +173,24 @@ git clone git@github.com:Taishi66/nvim-tweaked.git ~/.config/nvim
 nvim
 ```
 
-### Optional Dependencies
-
-For the best experience, install these tools:
+### Recommended Dependencies
 
 ```bash
 # Search tools
-brew install ripgrep fd
+sudo apt install ripgrep fd-find  # Ubuntu/Debian
+# or: brew install ripgrep fd     # macOS
 
-# For lazydocker integration (<leader>D)
-brew install lazydocker
+# Formatters
+pipx install ruff black isort     # Python
+npm install -g prettier           # JS/TS/JSON/CSS/HTML/MD
 
-# Node.js (for many LSP servers)
-brew install node
+# Stylua (Lua formatter)
+curl -sSL https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip -o /tmp/stylua.zip
+unzip /tmp/stylua.zip -d ~/.local/bin/
+
+# TUI tools
+brew install lazygit lazydocker   # or install manually
+go install github.com/jorgerojas26/lazysql@latest
 ```
 
 ## Structure
@@ -142,41 +201,45 @@ brew install node
 ├── lazy-lock.json              # Plugin version lock
 ├── lua/
 │   ├── config/
-│   │   ├── autocmds.lua        # Auto commands
-│   │   ├── keyboard.lua        # AZERTY/QWERTY toggle system
+│   │   ├── autocmds.lua        # Auto commands (terminal behavior)
+│   │   ├── keyboard.lua        # AZERTY/QWERTY + cheatsheet
 │   │   ├── keymaps.lua         # VSCode-like keybindings
 │   │   ├── lazy.lua            # lazy.nvim setup
-│   │   └── options.lua         # Neovim options
+│   │   ├── options.lua         # Neovim options + transparency
+│   │   └── theme-configs.lua   # Theme configurations
 │   └── plugins/
 │       ├── dashboard.lua       # Custom ASCII dashboard
-│       ├── keyboard-indicator.lua  # Statusline keyboard mode
+│       ├── git-enhanced.lua    # Git keymaps (diffview, gitsigns)
 │       ├── statusline.lua      # Custom lualine config
 │       ├── theme-persist.lua   # Theme persistence
-│       └── themes.lua          # 16 transparent themes
+│       └── themes.lua          # 22 transparent themes
 ```
 
 ## Key Plugins
 
-This config is built on LazyVim and includes:
+Built on LazyVim with:
 
 - **snacks.nvim** - Dashboard, file picker, terminal, notifications
 - **lualine.nvim** - Custom statusline
+- **conform.nvim** - Format on save
 - **grug-far.nvim** - Search and replace
 - **flash.nvim** - Enhanced navigation
 - **trouble.nvim** - Diagnostics list
 - **which-key.nvim** - Keybinding hints
 - **gitsigns.nvim** - Git integration
+- **diffview.nvim** - Git diff viewer
 - **mason.nvim** - LSP/formatter/linter installer
 
 ## Customization
 
 ### Adding a new theme
 
-Edit `lua/plugins/themes.lua` and add your theme with `transparent = true`.
+Edit `lua/plugins/themes.lua` and add your theme with the `theme()` helper.
 
 ### Modifying keybindings
 
-Edit `lua/config/keymaps.lua` for VSCode-style bindings or `lua/config/keyboard.lua` for AZERTY mappings.
+- `lua/config/keymaps.lua` - VSCode-style bindings
+- `lua/config/keyboard.lua` - AZERTY mappings + cheatsheet
 
 ### Changing the dashboard
 

@@ -203,11 +203,25 @@ map("n", "<C-b>", function()
 end, { desc = "Toggle Sidebar (Ctrl+B)" })
 
 -- ════════════════════════════════════════════════════════════════════════════
--- TERMINAL (Ctrl+`) - VSCode standard
+-- TERMINAL - VSCode standard + alternatives
 -- ════════════════════════════════════════════════════════════════════════════
-map({ "n", "t" }, "<C-`>", function()
+local function toggle_terminal()
   Snacks.terminal()
-end, { desc = "Toggle Terminal (Ctrl+`)" })
+end
+
+-- Ctrl+` (peut ne pas fonctionner selon le terminal)
+map({ "n", "t" }, "<C-`>", toggle_terminal, { desc = "Toggle Terminal" })
+-- Alt+t - alternative fiable
+map({ "n", "t" }, "<A-t>", toggle_terminal, { desc = "Toggle Terminal (Alt+T)" })
+-- F4 - alternative universelle
+map({ "n", "t" }, "<F4>", toggle_terminal, { desc = "Toggle Terminal (F4)" })
+-- Leader raccourci
+map("n", "<leader>tt", toggle_terminal, { desc = "Toggle Terminal" })
+
+-- Sortir du mode terminal : double Escape (permet aux TUI de recevoir un seul Esc)
+map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit Terminal Mode (double Esc)" })
+-- Alternative : jk comme en mode insert
+map("t", "jk", "<C-\\><C-n>", { desc = "Exit Terminal Mode" })
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- PROBLEMS/DIAGNOSTICS (Ctrl+Shift+M) - VSCode standard
@@ -295,11 +309,24 @@ map("n", "<C-S-g>", function()
 end, { desc = "Source Control (Ctrl+Shift+G)" })
 
 -- ════════════════════════════════════════════════════════════════════════════
--- LAZYDOCKER / LAZYGIT
+-- TUI TOOLS - Groupe <leader>o (Open)
 -- ════════════════════════════════════════════════════════════════════════════
-map("n", "<leader>D", function()
+-- Note: Lazygit déjà disponible via <leader>gg (LazyVim default)
+
+-- Lazydocker
+map("n", "<leader>od", function()
   Snacks.terminal("lazydocker", { cwd = LazyVim.root() })
 end, { desc = "Lazydocker" })
+
+-- Lazysql
+map("n", "<leader>oq", function()
+  Snacks.terminal("lazysql", { cwd = LazyVim.root() })
+end, { desc = "Lazysql (sQl)" })
+
+-- Lazyssh
+map("n", "<leader>os", function()
+  Snacks.terminal("lazyssh", { cwd = LazyVim.root() })
+end, { desc = "Lazyssh" })
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- DELETE WORD (Ctrl+Backspace) - VSCode standard
@@ -311,12 +338,14 @@ map("c", "<C-BS>", "<C-w>", { desc = "Delete Word Before Cursor" })
 -- NOTE: <C-H> n'est PAS remappé car il correspond à Backspace dans beaucoup de terminaux
 
 -- ════════════════════════════════════════════════════════════════════════════
--- WINDOW NAVIGATION - Alt+Arrows (plus compatible que Super)
+-- WINDOW/SPLIT NAVIGATION
 -- ════════════════════════════════════════════════════════════════════════════
-map("n", "<A-Left>", "<C-w>h", { desc = "Go to Left Window" })
-map("n", "<A-Right>", "<C-w>l", { desc = "Go to Right Window" })
-map("n", "<A-Up>", "<C-w>k", { desc = "Go to Upper Window" })
-map("n", "<A-Down>", "<C-w>j", { desc = "Go to Lower Window" })
+-- NOTE: LazyVim définit déjà <C-h/j/k/l> pour navigation entre splits
+-- NOTE: LazyVim définit déjà <leader>w comme préfixe window (<C-w>)
+-- NOTE: LazyVim définit déjà <leader>- (split horizontal) et <leader>| (split vertical)
+--
+-- Si Ctrl+h ne fonctionne pas (terminal l'interprète comme Backspace),
+-- utilisez <leader>wh/wj/wk/wl ou les commandes :wincmd h/j/k/l
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- MOVE LINES (Alt+J/K) - Déjà dans LazyVim mais on s'assure
@@ -361,7 +390,13 @@ map("n", "[q", "<cmd>cprev<cr>zz", { desc = "Previous quickfix" })
 map("n", "]q", "<cmd>cnext<cr>zz", { desc = "Next quickfix" })
 
 -- ════════════════════════════════════════════════════════════════════════════
--- SPLIT WINDOWS (VSCode-like)
+-- SPLIT WINDOWS
 -- ════════════════════════════════════════════════════════════════════════════
-map("n", "<C-\\>", "<cmd>vsplit<cr>", { desc = "Split Vertical" })
-map("n", "<C-S-\\>", "<cmd>split<cr>", { desc = "Split Horizontal" })
+-- LazyVim définit déjà :
+--   <leader>|  = Split Vertical (côte à côte)
+--   <leader>-  = Split Horizontal (empilé)
+--   <leader>wd = Close window
+--
+-- Alternatives plus faciles à taper (AZERTY-friendly)
+map("n", "<leader>wv", "<C-w>v", { desc = "Split Vertical" })
+map("n", "<leader>wh", "<C-w>s", { desc = "Split Horizontal" })
