@@ -1,6 +1,21 @@
 # nvim-tweaked
 
-A customized [LazyVim](https://github.com/LazyVim/LazyVim) configuration with VSCode-like keybindings, AZERTY keyboard support, and a curated collection of 22 transparent themes.
+A customized [LazyVim](https://github.com/LazyVim/LazyVim) configuration with VSCode-like keybindings, AZERTY keyboard support, and 24 transparent themes.
+
+## Quick Reference
+
+| Action | Shortcut |
+|--------|----------|
+| Find files | `Ctrl+P` |
+| Find in project | `Alt+F` |
+| Command palette | `Ctrl+Shift+P` |
+| File explorer | `Ctrl+B` |
+| Terminal | `Alt+T` or `F4` |
+| Split vertical | `Space w v` |
+| Split horizontal | `Space w h` |
+| Navigate splits | `Ctrl+h/j/k/l` |
+| Cheatsheet | `:Keys` |
+| Change theme | `Space u C` |
 
 ## Features
 
@@ -93,7 +108,7 @@ Supported formatters:
 - **Lua**: stylua
 - **JS/TS/JSON/CSS/HTML/MD**: prettier
 
-### Theme Collection (22 themes with transparency)
+### Theme Collection (24 themes with transparency)
 
 All themes are pre-configured with transparent backgrounds:
 
@@ -120,6 +135,8 @@ All themes are pre-configured with transparent backgrounds:
 | **VSCode** | dark, light |
 | **Ayu** | dark, light, mirage |
 | **Bamboo** | - |
+| **Melange** | - |
+| **Modus Themes** | operandi, vivendi |
 | **Poimandres** | - |
 
 **Theme shortcuts:**
@@ -157,7 +174,6 @@ Developer-focused lualine configuration:
 - Git
 - [Nerd Font](https://www.nerdfonts.com/) (for icons)
 - Terminal with true color support
-- Node.js (for LSP servers and prettier)
 
 ### Quick Start
 
@@ -173,25 +189,83 @@ git clone git@github.com:Taishi66/nvim-tweaked.git ~/.config/nvim
 nvim
 ```
 
-### Recommended Dependencies
+### Dependencies
+
+<details>
+<summary><b>Ubuntu/Debian</b></summary>
 
 ```bash
-# Search tools
-sudo apt install ripgrep fd-find  # Ubuntu/Debian
-# or: brew install ripgrep fd     # macOS
+# Essential
+sudo apt install ripgrep fd-find nodejs npm pipx
 
-# Formatters
-pipx install ruff black isort     # Python
-npm install -g prettier           # JS/TS/JSON/CSS/HTML/MD
+# Python formatters
+pipx install ruff black isort
 
-# Stylua (Lua formatter)
+# JS/TS formatter
+npm install -g prettier
+
+# Lua formatter
 curl -sSL https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip -o /tmp/stylua.zip
 unzip /tmp/stylua.zip -d ~/.local/bin/
 
-# TUI tools
-brew install lazygit lazydocker   # or install manually
-go install github.com/jorgerojas26/lazysql@latest
+# TUI tools (optional)
+curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | bash
+LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | grep -Po '"tag_name": "v\K[^"]*')
+curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+tar xf lazygit.tar.gz lazygit && sudo install lazygit /usr/local/bin && rm lazygit lazygit.tar.gz
 ```
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+```bash
+# Essential
+brew install ripgrep fd node pipx
+
+# Python formatters
+pipx install ruff black isort
+
+# JS/TS formatter
+npm install -g prettier
+
+# Lua formatter
+brew install stylua
+
+# TUI tools (optional)
+brew install lazygit lazydocker
+```
+</details>
+
+<details>
+<summary><b>Arch Linux</b></summary>
+
+```bash
+sudo pacman -S ripgrep fd nodejs npm python-pipx stylua lazygit
+pipx install ruff black isort
+npm install -g prettier
+```
+</details>
+
+## Troubleshooting
+
+### Tree-sitter parsers fail to compile
+
+```
+Error during "tree-sitter build": node: No such file or directory
+```
+
+**Solution:** Node.js n'est pas dans le PATH. Si vous utilisez nvm :
+```bash
+# Ajouter à ~/.bashrc ou ~/.zshrc
+export PATH="$HOME/.config/nvm/versions/node/$(ls $HOME/.config/nvm/versions/node)/bin:$PATH"
+```
+
+### Format on save doesn't work
+
+1. Vérifiez que les formatters sont installés : `:ConformInfo`
+2. Toggle format on save : `Space u f`
+3. Format manuel : `Shift+Alt+F`
 
 ## Structure
 
@@ -212,7 +286,7 @@ go install github.com/jorgerojas26/lazysql@latest
 │       ├── git-enhanced.lua    # Git keymaps (diffview, gitsigns)
 │       ├── statusline.lua      # Custom lualine config
 │       ├── theme-persist.lua   # Theme persistence
-│       └── themes.lua          # 22 transparent themes
+│       └── themes.lua          # 24 transparent themes
 ```
 
 ## Key Plugins
